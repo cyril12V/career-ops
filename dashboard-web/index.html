@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Career-Ops Dashboard — Cyril Shalaby</title>
+  <style>
+    /* ── CSS Variables ─────────────────────────────────────────────── */
+    :root {
+      --bg-base:       #0d1117;
+      --bg-surface:    #161b22;
+      --bg-elevated:   #1c2128;
+      --bg-overlay:    #21262d;
+      --bg-glass:      rgba(28, 33, 40, 0.7);
+
+      --border:        rgba(255,255,255,0.07);
+      --border-subtle: rgba(255,255,255,0.04);
+
+      --text-primary:  #e6edf3;
+      --text-secondary:#8b949e;
+      --text-muted:    #484f58;
+
+      --accent:        #388bfd;
+      --accent-glow:   rgba(56,139,253,0.18);
+
+      /* Status colors */
+      --c-evaluated: #388bfd;
+      --c-applied:   #a371f7;
+      --c-responded: #39d3bb;
+      --c-interview: #d29922;
+      --c-offer:     #3fb950;
+      --c-rejected:  #f85149;
+      --c-discarded: #6e7681;
+      --c-skip:      #30363d;
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,0.6);
+    }
+
+    /* ── Reset ─────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: var(--bg-base);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    /* ── Layout ────────────────────────────────────────────────────── */
+    .app {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px 20px;
+    }
+
+    /* ── Header ────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #388bfd 0%, #a371f7 100%);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      box-shadow: 0 0 20px rgba(56,139,253,0.3);
+    }
+
+    .header-titles h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: var(--text-primary);
+    }
+
+    .header-titles p {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 1px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .refresh-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .refresh-btn:hover {
+      background: var(--bg-overlay);
+      color: var(--text-primary);
+      border-color: rgba(255,255,255,0.12);
+    }
+
+    .refresh-btn .icon { font-size: 14px; }
+    .refresh-btn.spinning .icon { animation: spin 0.8s linear infinite; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .last-updated {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* ── Stats Cards ───────────────────────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 640px)  { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .stat-card {
+      background: var(--bg-glass);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-1px);
+      border-color: rgba(255,255,255,0.11);
+      box-shadow: var(--shadow-md);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      color: var(--text-primary);
+      line-height: 1;
+    }
+
+    .stat-value.accent  { color: var(--accent); }
+    .stat-value.green   { color: var(--c-offer); }
+    .stat-value.amber   { color: var(--c-interview); }
+    .stat-value.purple  { color: var(--c-applied); }
+
+    .stat-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 5px;
+    }
+
+    /* ── Toolbar ───────────────────────────────────────────────────── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .search-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 200px;
+      max-width: 360px;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 14px;
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 8px 12px 8px 32px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .search-input::placeholder { color: var(--text-muted); }
+
+    .search-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    /* ── Filter Pills ──────────────────────────────────────────────── */
+    .filters {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filter-pill {
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .filter-pill.all {
+      background: var(--bg-elevated);
+      border-color: var(--border);
+      color: var(--text-secondary);
+    }
+
+    .filter-pill.all.active,
+    .filter-pill.all:hover {
+      background: var(--bg-overlay);
+      border-color: rgba(255,255,255,0.15);
+      color: var(--text-primary);
+    }
+
+    .filter-pill[data-status] {
+      opacity: 0.55;
+    }
+
+    .filter-pill[data-status].active,
+    .filter-pill[data-status]:hover { opacity: 1; }
+
+    /* ── Table ─────────────────────────────────────────────────────── */
+    .table-wrap {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .table-count {
+      padding: 12px 16px;
+      font-size: 12px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.15s;
+    }
+
+    thead th:hover { color: var(--text-secondary); }
+
+    thead th .sort-icon {
+      display: inline-block;
+      margin-left: 4px;
+      opacity: 0.4;
+      transition: opacity 0.15s;
+    }
+
+    thead th.sorted .sort-icon { opacity: 1; color: var(--accent); }
+    thead th.sorted { color: var(--text-secondary); }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border-subtle);
+      transition: background 0.12s ease;
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--bg-elevated); }
+
+    td {
+      padding: 12px 14px;
+      font-size: 13px;
+      vertical-align: middle;
+    }
+
+    .td-num {
+      color: var(--text-muted);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      width: 40px;
+    }
+
+    .td-date {
+      color: var(--text-secondary);
+      font-size: 12px;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .td-company { font-weight: 600; }
+    .td-role { color: var(--text-secondary); max-width: 240px; }
+
+    .td-notes {
+      color: var(--text-muted);
+      font-size: 12px;
+      max-width: 200px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Score Bar ─────────────────────────────────────────────────── */
+    .score-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 80px;
+    }
+
+    .score-bar-track {
+      flex: 1;
+      height: 4px;
+      background: var(--bg-overlay);
+      border-radius: 2px;
+      overflow: hidden;
+      min-width: 48px;
+    }
+
+    .score-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.4s ease;
+    }
+
+    .score-text {
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-secondary);
+      min-width: 26px;
+    }
+
+    /* ── Status Badge ──────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+    }
+
+    .badge-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Report Link ───────────────────────────────────────────────── */
+    .report-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      background: var(--bg-overlay);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-decoration: none;
+    }
+
+    .report-link:hover {
+      background: var(--accent-glow);
+      border-color: var(--accent);
+      color: var(--text-primary);
+    }
+
+    .no-report {
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    /* ── Empty State ───────────────────────────────────────────────── */
+    .empty-state {
+      padding: 80px 20px;
+      text-align: center;
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.4;
+    }
+
+    .empty-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .empty-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      max-width: 400px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* ── Modal ─────────────────────────────────────────────────────── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 100;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .modal {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 820px;
+      max-height: calc(100vh - 80px);
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-lg);
+      transform: translateY(12px);
+      transition: transform 0.2s ease;
+      overflow: hidden;
+    }
+
+    .modal-backdrop.open .modal { transform: translateY(0); }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+    }
+
+    .modal-title {
+      font-size: 15px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .modal-close {
+      width: 28px;
+      height: 28px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+
+    .modal-close:hover {
+      background: var(--bg-overlay);
+      color: var(--text-primary);
+    }
+
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    /* Markdown rendered content */
+    .md-content { line-height: 1.7; }
+
+    .md-content h1 { font-size: 20px; font-weight: 700; margin: 0 0 16px; color: var(--text-primary); }
+    .md-content h2 { font-size: 15px; font-weight: 700; margin: 24px 0 10px; color: var(--text-primary); padding-bottom: 6px; border-bottom: 1px solid var(--border-subtle); }
+    .md-content h3 { font-size: 13px; font-weight: 600; margin: 16px 0 8px; color: var(--text-secondary); }
+    .md-content p  { margin: 0 0 12px; color: var(--text-secondary); }
+    .md-content strong { color: var(--text-primary); font-weight: 600; }
+    .md-content em { color: var(--text-secondary); font-style: italic; }
+    .md-content hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+    .md-content a  { color: var(--accent); text-decoration: none; }
+    .md-content a:hover { text-decoration: underline; }
+
+    .md-content code {
+      background: var(--bg-overlay);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      color: #e3b341;
+    }
+
+    .md-content pre {
+      background: var(--bg-overlay);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+
+    .md-content pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--text-primary);
+    }
+
+    .md-content ul, .md-content ol {
+      padding-left: 20px;
+      margin: 0 0 12px;
+      color: var(--text-secondary);
+    }
+
+    .md-content li { margin: 4px 0; }
+
+    /* Tables inside modal */
+    .md-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 13px;
+    }
+
+    .md-content th {
+      background: var(--bg-elevated);
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .md-content td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+    }
+
+    .md-content tr:hover td { background: var(--bg-elevated); }
+
+    /* Inline bold labels */
+    .md-content p strong:first-child { color: var(--text-muted); }
+
+    /* ── Loading Overlay ───────────────────────────────────────────── */
+    .loading-row td {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
+    /* ── Scrollbar ─────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--bg-overlay); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* ── Misc ──────────────────────────────────────────────────────── */
+    .divider {
+      height: 1px;
+      background: var(--border-subtle);
+      margin: 24px 0;
+    }
+
+    @media (max-width: 768px) {
+      .app { padding: 16px 12px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .table-wrap { overflow-x: auto; }
+      table { min-width: 700px; }
+      .header { flex-direction: column; align-items: flex-start; }
+    }
+
+    @media (max-width: 480px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .search-wrap { max-width: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── Header ──────────────────────────────────────────────────── -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">🎯</div>
+      <div class="header-titles">
+        <h1>Career-Ops Dashboard</h1>
+        <p>Cyril Shalaby — Suivi des candidatures</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="last-updated" id="lastUpdated"></span>
+      <button class="refresh-btn" id="refreshBtn" onclick="loadAll()">
+        <span class="icon">↻</span>
+        Actualiser
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Stats ───────────────────────────────────────────────────── -->
+  <section class="stats-grid" id="statsGrid">
+    <div class="stat-card">
+      <div class="stat-label">Total candidatures</div>
+      <div class="stat-value accent" id="statTotal">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Score moyen</div>
+      <div class="stat-value" id="statAvgScore">—</div>
+      <div class="stat-sub">/5</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">En cours</div>
+      <div class="stat-value purple" id="statActive">—</div>
+      <div class="stat-sub">Applied + Responded</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Entretiens</div>
+      <div class="stat-value amber" id="statInterviews">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Offres</div>
+      <div class="stat-value green" id="statOffers">—</div>
+    </div>
+  </section>
+
+  <!-- ── Toolbar ─────────────────────────────────────────────────── -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input
+        type="search"
+        class="search-input"
+        id="searchInput"
+        placeholder="Rechercher entreprise ou poste…"
+        autocomplete="off"
+      />
+    </div>
+    <div class="filters" id="filterPills"></div>
+  </div>
+
+  <!-- ── Table ───────────────────────────────────────────────────── -->
+  <div class="table-wrap">
+    <div class="table-count" id="tableCount"></div>
+    <table id="appTable">
+      <thead>
+        <tr>
+          <th class="th-sortable" data-col="id">    # <span class="sort-icon">↕</span></th>
+          <th class="th-sortable" data-col="date">  Date <span class="sort-icon">↕</span></th>
+          <th class="th-sortable" data-col="company">Entreprise <span class="sort-icon">↕</span></th>
+          <th>Poste</th>
+          <th class="th-sortable" data-col="score"> Score <span class="sort-icon">↕</span></th>
+          <th class="th-sortable" data-col="status">Statut <span class="sort-icon">↕</span></th>
+          <th>Rapport</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody id="appTbody">
+        <tr class="loading-row">
+          <td colspan="8"><span class="spinner"></span>Chargement…</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- ── Modal ─────────────────────────────────────────────────────── -->
+<div class="modal-backdrop" id="reportModal" onclick="closeModalOnBackdrop(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Rapport</div>
+      <button class="modal-close" onclick="closeModal()" title="Fermer">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="md-content" id="modalContent"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let allApps = [];
+let activeFilter = 'all';
+let searchQuery = '';
+let sortCol = 'id';
+let sortDir = 1; // 1 = asc, -1 = desc
+
+// ── Status config ──────────────────────────────────────────────────────────
+const STATUS_CONFIG = {
+  Evaluated: { color: 'var(--c-evaluated)', bg: 'rgba(56,139,253,0.12)',  label: 'Evaluated' },
+  Applied:   { color: 'var(--c-applied)',   bg: 'rgba(163,113,247,0.12)', label: 'Applied'   },
+  Responded: { color: 'var(--c-responded)', bg: 'rgba(57,211,187,0.12)', label: 'Responded' },
+  Interview: { color: 'var(--c-interview)', bg: 'rgba(210,153,34,0.15)', label: 'Interview' },
+  Offer:     { color: 'var(--c-offer)',     bg: 'rgba(63,185,80,0.12)',  label: 'Offer'     },
+  Rejected:  { color: 'var(--c-rejected)',  bg: 'rgba(248,81,73,0.12)',  label: 'Rejected'  },
+  Discarded: { color: 'var(--c-discarded)', bg: 'rgba(110,118,129,0.12)',label: 'Discarded' },
+  SKIP:      { color: 'var(--c-skip)',      bg: 'rgba(48,54,61,0.5)',    label: 'SKIP'      },
+};
+
+// ── Score color ────────────────────────────────────────────────────────────
+function scoreColor(score) {
+  if (score === null) return 'var(--text-muted)';
+  if (score < 2)  return '#f85149';
+  if (score < 3)  return '#f0883e';
+  if (score < 4)  return '#d29922';
+  return '#3fb950';
+}
+
+// ── Badge HTML ─────────────────────────────────────────────────────────────
+function badgeHTML(status) {
+  const cfg = STATUS_CONFIG[status] || { color: 'var(--text-muted)', bg: 'var(--bg-overlay)', label: status || '—' };
+  return `<span class="badge" style="color:${cfg.color};background:${cfg.bg};border:1px solid ${cfg.color}22">
+    <span class="badge-dot" style="background:${cfg.color}"></span>${cfg.label}
+  </span>`;
+}
+
+// ── Score cell HTML ────────────────────────────────────────────────────────
+function scoreCellHTML(score) {
+  if (score === null) return '<span style="color:var(--text-muted);font-size:12px">—</span>';
+  const pct = Math.min(100, (score / 5) * 100);
+  const color = scoreColor(score);
+  return `<div class="score-cell">
+    <div class="score-bar-track">
+      <div class="score-bar-fill" style="width:${pct}%;background:${color}"></div>
+    </div>
+    <span class="score-text" style="color:${color}">${score.toFixed(1)}</span>
+  </div>`;
+}
+
+// ── Render table ───────────────────────────────────────────────────────────
+function getFilteredSorted() {
+  let items = allApps.slice();
+
+  if (activeFilter !== 'all') {
+    items = items.filter(a => a.status === activeFilter);
+  }
+
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    items = items.filter(a =>
+      a.company.toLowerCase().includes(q) ||
+      a.role.toLowerCase().includes(q) ||
+      a.notes.toLowerCase().includes(q)
+    );
+  }
+
+  items.sort((a, b) => {
+    let va, vb;
+    switch (sortCol) {
+      case 'id':     va = parseInt(a.id) || 0; vb = parseInt(b.id) || 0; break;
+      case 'date':   va = a.date; vb = b.date; break;
+      case 'company':va = a.company.toLowerCase(); vb = b.company.toLowerCase(); break;
+      case 'score':  va = a.score ?? -1; vb = b.score ?? -1; break;
+      case 'status': va = a.status; vb = b.status; break;
+      default:       va = ''; vb = '';
+    }
+    if (va < vb) return -1 * sortDir;
+    if (va > vb) return  1 * sortDir;
+    return 0;
+  });
+
+  return items;
+}
+
+function renderTable() {
+  const items = getFilteredSorted();
+  const tbody = document.getElementById('appTbody');
+  const count = document.getElementById('tableCount');
+
+  count.textContent = `${items.length} candidature${items.length !== 1 ? 's' : ''}${
+    allApps.length !== items.length ? ` sur ${allApps.length}` : ''
+  }`;
+
+  if (items.length === 0) {
+    const msg = allApps.length === 0
+      ? `<div class="empty-icon">🎯</div>
+         <div class="empty-title">Aucune candidature pour l'instant</div>
+         <div class="empty-sub">Collez une offre dans Claude Code pour commencer.<br>Les candidatures apparaîtront ici automatiquement.</div>`
+      : `<div class="empty-icon">🔍</div>
+         <div class="empty-title">Aucun résultat</div>
+         <div class="empty-sub">Aucune candidature ne correspond à votre recherche.<br>Modifiez les filtres ou le terme de recherche.</div>`;
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">${msg}</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = items.map(app => {
+    const reportCell = app.report
+      ? `<button class="report-link" onclick="openReport('${escAttr(app.report)}','${escAttr(app.company + ' — ' + app.role)}')">
+           📄 Voir
+         </button>`
+      : `<span class="no-report">—</span>`;
+
+    return `<tr>
+      <td class="td-num">${escHTML(app.id)}</td>
+      <td class="td-date">${escHTML(app.date)}</td>
+      <td class="td-company">${escHTML(app.company)}</td>
+      <td class="td-role">${escHTML(app.role)}</td>
+      <td>${scoreCellHTML(app.score)}</td>
+      <td>${badgeHTML(app.status)}</td>
+      <td>${reportCell}</td>
+      <td class="td-notes" title="${escAttr(app.notes)}">${escHTML(app.notes) || '<span style="color:var(--text-muted)">—</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Build filter pills ─────────────────────────────────────────────────────
+function renderFilters() {
+  const container = document.getElementById('filterPills');
+
+  // Count by status
+  const counts = {};
+  for (const app of allApps) {
+    counts[app.status] = (counts[app.status] || 0) + 1;
+  }
+
+  const allPill = `<button
+    class="filter-pill all${activeFilter === 'all' ? ' active' : ''}"
+    onclick="setFilter('all')">
+    Tous (${allApps.length})
+  </button>`;
+
+  const statusPills = Object.entries(STATUS_CONFIG)
+    .filter(([s]) => counts[s])
+    .map(([status, cfg]) => {
+      const c = counts[status] || 0;
+      return `<button
+        class="filter-pill${activeFilter === status ? ' active' : ''}"
+        data-status="${status}"
+        style="color:${cfg.color};background:${cfg.bg};border-color:${cfg.color}44"
+        onclick="setFilter('${status}')">
+        ${cfg.label} ${c}
+      </button>`;
+    }).join('');
+
+  container.innerHTML = allPill + statusPills;
+}
+
+function setFilter(status) {
+  activeFilter = status;
+  renderFilters();
+  renderTable();
+}
+
+// ── Sort ───────────────────────────────────────────────────────────────────
+function initSortHeaders() {
+  document.querySelectorAll('.th-sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.col;
+      if (sortCol === col) {
+        sortDir *= -1;
+      } else {
+        sortCol = col;
+        sortDir = 1;
+      }
+      document.querySelectorAll('.th-sortable').forEach(t => t.classList.remove('sorted'));
+      th.classList.add('sorted');
+      th.querySelector('.sort-icon').textContent = sortDir === 1 ? '↑' : '↓';
+      renderTable();
+    });
+  });
+}
+
+// ── Search ─────────────────────────────────────────────────────────────────
+document.getElementById('searchInput').addEventListener('input', e => {
+  searchQuery = e.target.value.trim();
+  renderTable();
+});
+
+// ── Stats ──────────────────────────────────────────────────────────────────
+function renderStats(stats) {
+  document.getElementById('statTotal').textContent = stats.total ?? '0';
+  document.getElementById('statAvgScore').textContent = stats.avgScore !== null ? stats.avgScore : '—';
+  document.getElementById('statActive').textContent = stats.active ?? '0';
+  document.getElementById('statInterviews').textContent = stats.interviews ?? '0';
+  document.getElementById('statOffers').textContent = stats.offers ?? '0';
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────
+function openReport(filename, title) {
+  const modal = document.getElementById('reportModal');
+  const content = document.getElementById('modalContent');
+  const modalTitle = document.getElementById('modalTitle');
+
+  modalTitle.textContent = title || filename;
+  content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)"><span class="spinner"></span>Chargement du rapport…</div>';
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  fetch(`/api/reports/${encodeURIComponent(filename)}`)
+    .then(r => r.text())
+    .then(text => {
+      content.innerHTML = markdownToHTML(text);
+    })
+    .catch(() => {
+      content.innerHTML = '<p style="color:var(--c-rejected)">Impossible de charger le rapport.</p>';
+    });
+}
+
+function closeModal() {
+  document.getElementById('reportModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function closeModalOnBackdrop(e) {
+  if (e.target === document.getElementById('reportModal')) closeModal();
+}
+
+// Keyboard shortcut
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// ── Minimal markdown renderer ──────────────────────────────────────────────
+function markdownToHTML(md) {
+  let html = escHTML(md);
+
+  // Headings
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+  // Bold & italic
+  html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // HR
+  html = html.replace(/^---+$/gm, '<hr>');
+
+  // Links
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+  // Tables
+  html = html.replace(/((?:^\|.+\|\n)+)/gm, (block) => {
+    const rows = block.trim().split('\n');
+    if (rows.length < 2) return block;
+
+    const isSep = r => /^\|[\s\-|:]+\|$/.test(r.trim());
+    const parseRow = r => r.split('|').slice(1, -1).map(c => c.trim());
+
+    let out = '<table>';
+    let inHead = true;
+    rows.forEach((row, i) => {
+      if (isSep(row)) { inHead = false; return; }
+      const cells = parseRow(row);
+      if (inHead && i === 0) {
+        out += '<thead><tr>' + cells.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+      } else {
+        out += '<tr>' + cells.map(c => `<td>${c}</td>`).join('') + '</tr>';
+      }
+    });
+    out += '</tbody></table>';
+    return out;
+  });
+
+  // Unordered lists
+  html = html.replace(/((?:^[ \t]*[-*+] .+\n?)+)/gm, block => {
+    const items = block.trim().split('\n').map(l => `<li>${l.replace(/^[ \t]*[-*+] /, '')}</li>`).join('');
+    return `<ul>${items}</ul>`;
+  });
+
+  // Ordered lists
+  html = html.replace(/((?:^\d+\. .+\n?)+)/gm, block => {
+    const items = block.trim().split('\n').map(l => `<li>${l.replace(/^\d+\. /, '')}</li>`).join('');
+    return `<ol>${items}</ol>`;
+  });
+
+  // Paragraphs — wrap remaining text blocks
+  html = html.replace(/^(?!<[a-z]).+$/gm, line => {
+    if (!line.trim()) return '';
+    return `<p>${line}</p>`;
+  });
+
+  // Clean up blank lines
+  html = html.replace(/\n{3,}/g, '\n\n');
+
+  return html;
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function escHTML(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function escAttr(str) {
+  if (!str) return '';
+  return String(str).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+}
+
+// ── Load all data ──────────────────────────────────────────────────────────
+async function loadAll() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+
+  try {
+    const [appsRes, statsRes] = await Promise.all([
+      fetch('/api/applications'),
+      fetch('/api/stats'),
+    ]);
+
+    if (!appsRes.ok || !statsRes.ok) throw new Error('API error');
+
+    allApps = await appsRes.json();
+    const stats = await statsRes.json();
+
+    renderStats(stats);
+    renderFilters();
+    renderTable();
+
+    const now = new Date();
+    document.getElementById('lastUpdated').textContent =
+      `Mis à jour à ${now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+  } catch (err) {
+    console.error('Load error:', err);
+    document.getElementById('appTbody').innerHTML =
+      `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--c-rejected)">
+        Impossible de contacter le serveur. Vérifiez que server.mjs est lancé sur le port 3737.
+      </td></tr>`;
+  } finally {
+    btn.classList.remove('spinning');
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+initSortHeaders();
+loadAll();
+</script>
+</body>
+</html>
