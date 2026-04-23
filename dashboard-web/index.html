@@ -811,6 +811,127 @@
     .toast.success { background: #1a4731; border: 1px solid rgba(63,185,80,0.4); }
     .toast.error   { background: #3d1b18; border: 1px solid rgba(248,81,73,0.4); }
 
+    /* ── Action Buttons ───────────────────────────────────────────── */
+    .action-btns {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .action-btn {
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.13s, border-color 0.13s, color 0.13s, opacity 0.13s;
+      position: relative;
+      flex-shrink: 0;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .action-btn:hover {
+      background: var(--bg-overlay);
+      border-color: rgba(255,255,255,0.14);
+      color: var(--text-primary);
+    }
+
+    .action-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .action-btn.loading {
+      pointer-events: none;
+    }
+
+    .action-btn.loading::after {
+      content: '';
+      position: absolute;
+      inset: 3px;
+      border: 2px solid transparent;
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    /* Tooltip */
+    .action-btn[title]:hover::before {
+      content: attr(title);
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-overlay);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+      padding: 4px 8px;
+      pointer-events: none;
+      z-index: 50;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ── Status Popover ────────────────────────────────────────────── */
+    .status-popover-wrap {
+      position: relative;
+    }
+
+    .status-popover {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+      z-index: 80;
+      min-width: 140px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .status-popover.open { display: block; }
+
+    .status-popover-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.1s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      color: var(--text-secondary);
+      font-family: inherit;
+    }
+
+    .status-popover-item:hover {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+    }
+
+    .status-popover-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
     /* ── Queue List ────────────────────────────────────────────────── */
     .queue-toggle {
       display: flex;
@@ -1067,11 +1188,12 @@
           <th class="th-sortable" data-col="status">Statut <span class="sort-icon">↕</span></th>
           <th>Rapport</th>
           <th>Notes</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody id="appTbody">
         <tr class="loading-row">
-          <td colspan="8"><span class="spinner"></span>Chargement…</td>
+          <td colspan="9"><span class="spinner"></span>Chargement…</td>
         </tr>
       </tbody>
     </table>
@@ -1197,7 +1319,7 @@ function renderTable() {
       : `<div class="empty-icon">🔍</div>
          <div class="empty-title">Aucun résultat</div>
          <div class="empty-sub">Aucune candidature ne correspond à votre recherche.<br>Modifiez les filtres ou le terme de recherche.</div>`;
-    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">${msg}</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state">${msg}</div></td></tr>`;
     return;
   }
 
@@ -1439,7 +1561,7 @@ async function loadAll() {
   } catch (err) {
     console.error('Load error:', err);
     document.getElementById('appTbody').innerHTML =
-      `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--c-rejected)">
+      `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--c-rejected)">
         Impossible de contacter le serveur. Vérifiez que server.mjs est lancé sur le port 3737.
       </td></tr>`;
   } finally {
