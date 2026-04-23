@@ -1079,6 +1079,9 @@
 
 </div>
 
+<!-- ── Toast ──────────────────────────────────────────────────────── -->
+<div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
 <!-- ── Modal ─────────────────────────────────────────────────────── -->
 <div class="modal-backdrop" id="reportModal" onclick="closeModalOnBackdrop(event)">
   <div class="modal">
@@ -1444,9 +1447,160 @@ async function loadAll() {
   }
 }
 
+// ── Toast ──────────────────────────────────────────────────────────────────
+let toastTimer = null;
+
+function showToast(message, type) {
+  const el = document.getElementById('toast');
+  if (toastTimer) clearTimeout(toastTimer);
+
+  el.textContent = message;
+  el.className = `toast ${type}`;
+  // Trigger reflow so transition fires from the hidden state
+  void el.offsetWidth;
+  el.classList.add('visible');
+
+  toastTimer = setTimeout(() => {
+    el.classList.remove('visible');
+  }, 3200);
+}
+
+// ── Pipeline — queue rendering ─────────────────────────────────────────────
+let pipelineItems = [];
+let queueOpen = false;
+
+function parseDomain(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
+function renderQueue() {
+  const list = document.getElementById('queueList');
+  const label = document.getElementById('queueToggleLabel');
+  const pending = pipelineItems.filter(i => i.status === 'pending');
+
+  label.textContent = `File d'attente (${pending.length} offre${pending.length !== 1 ? 's' : ''})`;
+
+  if (pending.length === 0) {
+    list.innerHTML = '<div class="queue-empty">Aucune offre en attente</div>';
+    return;
+  }
+
+  list.innerHTML = pending.map((item, idx) => {
+    const domain = parseDomain(item.url);
+    const noteHTML = item.note
+      ? `<span class="queue-item-note" title="${escAttr(item.note)}">${escHTML(item.note)}</span>`
+      : '';
+    return `<div class="queue-item">
+      <div class="queue-item-main">
+        <div class="queue-item-domain" title="${escAttr(item.url)}">${escHTML(domain)}</div>
+        <div class="queue-item-meta">
+          ${noteHTML}
+          <span class="queue-item-date">${escHTML(item.date)}</span>
+          <span class="queue-badge-pending">pending</span>
+        </div>
+      </div>
+      <button class="queue-copy-btn" onclick="copyQueueUrl(this, ${idx})" title="Copier l'URL">Copier</button>
+    </div>`;
+  }).join('');
+}
+
+function copyQueueUrl(btn, idx) {
+  const pending = pipelineItems.filter(i => i.status === 'pending');
+  const item = pending[idx];
+  if (!item) return;
+
+  navigator.clipboard.writeText(item.url).then(() => {
+    btn.textContent = '✓ Copié';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Copier';
+      btn.classList.remove('copied');
+    }, 2000);
+  }).catch(() => {
+    showToast('Impossible de copier', 'error');
+  });
+}
+
+function toggleQueue() {
+  queueOpen = !queueOpen;
+  const list = document.getElementById('queueList');
+  const chevron = document.getElementById('queueChevron');
+  list.classList.toggle('open', queueOpen);
+  chevron.classList.toggle('open', queueOpen);
+}
+
+async function loadPipeline() {
+  try {
+    const res = await fetch('/api/pipeline');
+    if (!res.ok) throw new Error('API error');
+    pipelineItems = await res.json();
+    renderQueue();
+  } catch {
+    document.getElementById('queueToggleLabel').textContent = 'File d\'attente (erreur de chargement)';
+  }
+}
+
+// ── Pipeline — form submit ─────────────────────────────────────────────────
+async function submitPipeline(e) {
+  e.preventDefault();
+
+  const urlInput = document.getElementById('pipelineUrl');
+  const noteInput = document.getElementById('pipelineNote');
+  const submitBtn = document.getElementById('pipelineSubmit');
+
+  const url = urlInput.value.trim();
+  const note = noteInput.value.trim();
+
+  urlInput.classList.remove('error');
+
+  if (!url || !/^https?:\/\/.+/.test(url)) {
+    urlInput.classList.add('error');
+    showToast('✗ URL invalide', 'error');
+    urlInput.focus();
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Ajout…';
+
+  try {
+    const res = await fetch('/api/pipeline', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, note }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      urlInput.classList.add('error');
+      showToast('✗ URL invalide', 'error');
+      return;
+    }
+
+    urlInput.value = '';
+    noteInput.value = '';
+    showToast(`✓ Offre ajoutée à la file (${data.count} en attente)`, 'success');
+
+    // Refresh queue and open it if it was closed
+    await loadPipeline();
+    if (!queueOpen) toggleQueue();
+  } catch {
+    showToast('✗ Impossible de contacter le serveur', 'error');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Ajouter à la file';
+  }
+}
+
 // ── Init ───────────────────────────────────────────────────────────────────
 initSortHeaders();
 loadAll();
+loadPipeline();
 </script>
 </body>
 </html>
