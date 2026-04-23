@@ -1330,15 +1330,18 @@ function renderTable() {
          </button>`
       : `<span class="no-report">—</span>`;
 
-    return `<tr>
+    const actionsCell = buildActionsCell(app);
+
+    return `<tr data-id="${escAttr(app.id)}">
       <td class="td-num">${escHTML(app.id)}</td>
       <td class="td-date">${escHTML(app.date)}</td>
       <td class="td-company">${escHTML(app.company)}</td>
       <td class="td-role">${escHTML(app.role)}</td>
       <td>${scoreCellHTML(app.score)}</td>
-      <td>${badgeHTML(app.status)}</td>
+      <td class="td-status-cell">${badgeHTML(app.status)}</td>
       <td>${reportCell}</td>
       <td class="td-notes" title="${escAttr(app.notes)}">${escHTML(app.notes) || '<span style="color:var(--text-muted)">—</span>'}</td>
+      <td>${actionsCell}</td>
     </tr>`;
   }).join('');
 }
@@ -1716,6 +1719,147 @@ async function submitPipeline(e) {
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = 'Ajouter à la file';
+  }
+}
+
+// ── Action buttons ─────────────────────────────────────────────────────────
+
+function buildActionsCell(app) {
+  const urlBtn = app.url
+    ? `<button class="action-btn" title="Ouvrir l'offre" onclick="openJobUrl('${escAttr(app.url)}')">🔗</button>`
+    : `<button class="action-btn" title="URL non disponible" disabled style="opacity:0.25;cursor:not-allowed">🔗</button>`;
+
+  const reportBtn = app.report
+    ? `<button class="action-btn" title="Télécharger le rapport" onclick="downloadReport('${escAttr(app.report)}')">📥</button>`
+    : `<button class="action-btn" title="Aucun rapport" disabled style="opacity:0.25;cursor:not-allowed">📥</button>`;
+
+  const cvBtn = `<button class="action-btn" id="cv-btn-${escAttr(app.id)}" title="Générer CV PDF" onclick="generateCv('${escAttr(app.id)}', this)">📄</button>`;
+
+  const statusOptions = Object.entries(STATUS_CONFIG).map(([s, cfg]) =>
+    `<button class="status-popover-item" onclick="applyStatus('${escAttr(app.id)}', '${s}', this)">
+      <span class="status-popover-dot" style="background:${cfg.color}"></span>${s}
+    </button>`
+  ).join('');
+
+  const statusBtn = `<div class="status-popover-wrap" id="status-wrap-${escAttr(app.id)}">
+    <button class="action-btn" title="Changer le statut" onclick="toggleStatusPopover('${escAttr(app.id)}', event)">⚙️</button>
+    <div class="status-popover" id="status-popover-${escAttr(app.id)}">${statusOptions}</div>
+  </div>`;
+
+  return `<div class="action-btns">${urlBtn}${reportBtn}${cvBtn}${statusBtn}</div>`;
+}
+
+function openJobUrl(url) {
+  if (!url) return;
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function downloadReport(filename) {
+  if (!filename) return;
+  const a = document.createElement('a');
+  a.href = `/api/download/report/${encodeURIComponent(filename)}`;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+async function generateCv(appId, btnEl) {
+  btnEl.classList.add('loading');
+  btnEl.disabled = true;
+  // Hide the emoji while spinner is shown
+  const origContent = btnEl.textContent;
+  btnEl.textContent = '';
+
+  try {
+    const res = await fetch(`/api/applications/${appId}/generate-cv`, { method: 'POST' });
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      showToast(`✗ ${data.error || 'Erreur génération CV'}`, 'error');
+      return;
+    }
+
+    showToast('✓ CV généré — téléchargement en cours…', 'success');
+
+    // Trigger download
+    const a = document.createElement('a');
+    a.href = data.downloadUrl;
+    a.download = data.downloadUrl.split('/').pop();
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch (err) {
+    showToast('✗ Impossible de contacter le serveur', 'error');
+  } finally {
+    btnEl.classList.remove('loading');
+    btnEl.disabled = false;
+    btnEl.textContent = origContent;
+  }
+}
+
+// Track which popover is currently open
+let openPopoverId = null;
+
+function toggleStatusPopover(appId, event) {
+  event.stopPropagation();
+  const popover = document.getElementById(`status-popover-${appId}`);
+  if (!popover) return;
+
+  if (openPopoverId && openPopoverId !== appId) {
+    const prev = document.getElementById(`status-popover-${openPopoverId}`);
+    if (prev) prev.classList.remove('open');
+    openPopoverId = null;
+  }
+
+  const isOpen = popover.classList.contains('open');
+  popover.classList.toggle('open', !isOpen);
+  openPopoverId = isOpen ? null : appId;
+}
+
+// Close popover on outside click
+document.addEventListener('click', () => {
+  if (openPopoverId) {
+    const popover = document.getElementById(`status-popover-${openPopoverId}`);
+    if (popover) popover.classList.remove('open');
+    openPopoverId = null;
+  }
+});
+
+async function applyStatus(appId, newStatus, itemEl) {
+  // Close popover immediately
+  const popover = document.getElementById(`status-popover-${appId}`);
+  if (popover) popover.classList.remove('open');
+  openPopoverId = null;
+
+  try {
+    const res = await fetch(`/api/applications/${appId}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      showToast(`✗ ${data.error || 'Erreur mise à jour statut'}`, 'error');
+      return;
+    }
+
+    // Update the badge in the row without full reload
+    const row = document.querySelector(`tr[data-id="${appId}"]`);
+    if (row) {
+      const statusCell = row.querySelector('.td-status-cell');
+      if (statusCell) statusCell.innerHTML = badgeHTML(newStatus);
+    }
+
+    // Update allApps state so filters/sorts stay consistent
+    const app = allApps.find(a => String(a.id) === String(appId));
+    if (app) app.status = newStatus;
+
+    showToast(`✓ Statut mis à jour : ${newStatus}`, 'success');
+    renderFilters();
+  } catch {
+    showToast('✗ Impossible de contacter le serveur', 'error');
   }
 }
 
